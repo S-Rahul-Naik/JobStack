@@ -301,3 +301,77 @@ exports.getMyJobs = async (req, res) => {
     res.status(500).json({ msg: 'Error fetching your jobs: ' + err.message });
   }
 };
+
+// 🔹 Recruiter dashboard stats
+exports.getRecruiterStats = async (req, res) => {
+  try {
+    const recruiterId = req.user.id;
+    // Total jobs posted
+    const totalJobs = await Job.countDocuments({ recruiterId });
+    // All job IDs for this recruiter
+    const jobIds = (await Job.find({ recruiterId }, '_id')).map(j => j._id);
+    // Applications for these jobs
+    const totalApplicants = await Application.countDocuments({ jobId: { $in: jobIds } });
+    const totalShortlisted = await Application.countDocuments({ jobId: { $in: jobIds }, status: 'shortlisted' });
+    const totalRejected = await Application.countDocuments({ jobId: { $in: jobIds }, status: 'rejected' });
+    const totalApplied = await Application.countDocuments({ jobId: { $in: jobIds }, status: 'applied' });
+    res.json({
+      totalJobs,
+      totalApplicants,
+      totalShortlisted,
+      totalRejected,
+      totalApplied
+    });
+  } catch (err) {
+    res.status(500).json({ msg: 'Error fetching recruiter stats: ' + err.message });
+  }
+};
+
+// 🔹 Recruiter analytics: jobs and applicants trend over time
+exports.getRecruiterTrends = async (req, res) => {
+  try {
+    const recruiterId = req.user.id;
+    // Parse date range from query
+    let { from, to } = req.query;
+    let fromDate, toDate;
+    if (from && to) {
+      fromDate = new Date(from + 'T00:00:00.000Z');
+      toDate = new Date(to + 'T23:59:59.999Z');
+    } else {
+      // Default: last 6 months
+      const now = new Date();
+      toDate = now;
+      fromDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    }
+    // Jobs posted per month in range
+    const jobs = await Job.aggregate([
+      { $match: {
+          recruiterId: typeof recruiterId === 'string' ? require('mongoose').Types.ObjectId(recruiterId) : recruiterId,
+          createdAt: { $gte: fromDate, $lte: toDate }
+        }
+      },
+      { $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+    // Applicants per month in range
+    const jobIds = (await Job.find({ recruiterId }, '_id')).map(j => j._id);
+    const applicants = await Application.aggregate([
+      { $match: {
+          jobId: { $in: jobIds },
+          createdAt: { $gte: fromDate, $lte: toDate }
+        }
+      },
+      { $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+    res.json({ jobs, applicants });
+  } catch (err) {
+    res.status(500).json({ msg: 'Error fetching recruiter trends: ' + err.message });
+  }
+};

@@ -10,7 +10,10 @@ const {
   getApplicantResume,
   exportApplicantsToExcel,
   deleteApplicant,
-  getMyJobs
+  getMyJobs,
+  deleteJob,
+  getRecruiterStats,
+  getRecruiterTrends
 } = require('../controllers/jobController');
 
 router.post('/create', auth, createJob);
@@ -22,5 +25,8 @@ router.get('/applicants/:applicationId/resume', auth, getApplicantResume);
 router.get('/applicants/export/excel', auth, exportApplicantsToExcel);
 router.delete('/applicants/:applicationId', auth, deleteApplicant);
 router.get('/my', auth, getMyJobs);
+router.delete('/:id', auth, deleteJob);
+router.get('/stats', auth, getRecruiterStats);
+router.get('/trends', auth, getRecruiterTrends);
 
 module.exports = router;
