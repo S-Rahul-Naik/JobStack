@@ -13,7 +13,8 @@ const {
   getMyJobs,
   deleteJob,
   getRecruiterStats,
-  getRecruiterTrends
+  getRecruiterTrends,
+  getApplicantsCount
 } = require('../controllers/jobController');
 
 router.post('/create', auth, createJob);
@@ -28,5 +29,6 @@ router.get('/my', auth, getMyJobs);
 router.delete('/:id', auth, deleteJob);
 router.get('/stats', auth, getRecruiterStats);
 router.get('/trends', auth, getRecruiterTrends);
+router.get('/:id/applicants/count', getApplicantsCount);
 
 module.exports = router;

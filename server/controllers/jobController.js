@@ -377,3 +377,14 @@ exports.getRecruiterTrends = async (req, res) => {
     res.status(500).json({ msg: 'Error fetching recruiter trends: ' + err.message });
   }
 };
+
+// Get real-time applicants count for a job
+exports.getApplicantsCount = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const count = await Application.countDocuments({ jobId });
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+};
