@@ -323,6 +323,7 @@ exports.getRecruiterStats = async (req, res) => {
       totalApplied
     });
   } catch (err) {
+    console.error('Error in getRecruiterStats:', err); // <-- Add error logging
     res.status(500).json({ msg: 'Error fetching recruiter stats: ' + err.message });
   }
 };
@@ -346,7 +347,7 @@ exports.getRecruiterTrends = async (req, res) => {
     // Jobs posted per month in range
     const jobs = await Job.aggregate([
       { $match: {
-          recruiterId: typeof recruiterId === 'string' ? require('mongoose').Types.ObjectId(recruiterId) : recruiterId,
+          recruiterId: typeof recruiterId === 'string' ? new (require('mongoose').Types.ObjectId)(recruiterId) : recruiterId,
           createdAt: { $gte: fromDate, $lte: toDate }
         }
       },
@@ -372,6 +373,7 @@ exports.getRecruiterTrends = async (req, res) => {
     ]);
     res.json({ jobs, applicants });
   } catch (err) {
+    console.error('Error in getRecruiterTrends:', err); // <-- Add error logging
     res.status(500).json({ msg: 'Error fetching recruiter trends: ' + err.message });
   }
 };
