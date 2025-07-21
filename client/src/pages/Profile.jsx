@@ -24,7 +24,7 @@ export default function Profile() {
     try {
       const res = await api.put('/auth/profile', form);
       setMessage({ type: 'success', text: 'Profile updated!' });
-      setUser(u => ({ ...u, name: form.name, email: form.email }));
+      setUser(u => ({ ...u, name: res.data.user.name, email: res.data.user.email, role: res.data.user.role }));
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.msg || 'Update failed' });
     }

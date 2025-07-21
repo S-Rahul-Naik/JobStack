@@ -20,12 +20,14 @@ export default function Login() {
       const token = res.data.token;
 
       localStorage.setItem('token', token);
-      const decoded = jwtDecode(token);            // ✅ decode token
-      setUser(decoded);                            // ✅ immediately update context state
+
+      // Fetch full user profile after login
+      const profileRes = await api.get('/auth/profile');
+      setUser({ ...profileRes.data, role: res.data.user.role, id: res.data.user._id });
 
       setMessage({ type: 'success', text: 'Login successful!' });
       setTimeout(() => {
-        const role = decoded.role;
+        const role = res.data.user.role;
         navigate(role === 'recruiter' ? '/recruiter' : role === 'admin' ? '/admin' : '/dashboard');
       }, 1000);
     } catch (err) {

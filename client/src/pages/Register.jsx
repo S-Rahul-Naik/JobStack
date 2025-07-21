@@ -2,9 +2,11 @@
 import { useState } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'applicant' });
   const [message, setMessage] = useState({ type: '', text: '' }); // ✅ Toast state
 
@@ -15,6 +17,9 @@ export default function Register() {
     try {
       const res = await api.post('/auth/register', form);
       localStorage.setItem('token', res.data.token);
+      // Fetch full user profile after registration
+      const profileRes = await api.get('/auth/profile');
+      setUser({ ...profileRes.data, role: res.data.user.role, id: res.data.user._id });
       setMessage({ type: 'success', text: 'Registered successfully!' }); // ✅ Show success
       setTimeout(() => navigate('/dashboard'), 1000); // ✅ Delay before redirect
     } catch (err) {

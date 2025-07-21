@@ -1,6 +1,9 @@
 // src/pages/RecruiterDashboard.jsx
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import { Chart, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 export default function RecruiterDashboard() {
   const [form, setForm] = useState({
@@ -25,6 +28,9 @@ export default function RecruiterDashboard() {
   const [errors, setErrors] = useState({});
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [stats, setStats] = useState({ totalJobs: 0, totalApplicants: 0, totalShortlisted: 0, totalRejected: 0, totalApplied: 0 });
+  const [trends, setTrends] = useState({ jobs: [], applicants: [] }); // --- Recruiter Trends (Jobs & Applicants per Month) ---
+  const [trendRange, setTrendRange] = useState({ from: '', to: '' }); // --- Date Range for Trends ---
   const applicantsPerPage = 6;
 
   const handleChange = (e) => {
@@ -68,6 +74,7 @@ export default function RecruiterDashboard() {
       await api.post('/jobs/create', payload);
       setMessage({ type: 'success', text: 'Job posted successfully!' });
       setForm({ title: '', description: '', requiredSkills: '', companyName: '', companyLogo: '', location: '', salary: '', jobType: '', country: '', applicationDeadline: '' });
+      refreshStats(); // update stats after posting
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.msg || 'Failed to post job' });
     } finally {
@@ -79,12 +86,38 @@ export default function RecruiterDashboard() {
     api.get('/jobs/applicants/all')
       .then(res => setApplicants(res.data))
       .catch(err => console.error('Error fetching applicants', err));
+    // Fetch recruiter stats
+    api.get('/jobs/stats')
+      .then(res => setStats(res.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     api.get('/jobs/my')
       .then(res => setJobs(res.data))
       .catch(err => console.error('Error fetching jobs', err));
+  }, []);
+
+  // --- Helper to get default last 6 months ---
+  useEffect(() => {
+    const now = new Date();
+    const to = now.toISOString().slice(0, 10);
+    const fromDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const from = fromDate.toISOString().slice(0, 10);
+    setTrendRange({ from, to });
+  }, []);
+  // Fetch trends on range change
+  useEffect(() => {
+    if (!trendRange.from || !trendRange.to) return;
+    api.get(`/jobs/trends?from=${trendRange.from}&to=${trendRange.to}`)
+      .then(res => setTrends(res.data))
+      .catch(() => setTrends({ jobs: [], applicants: [] }));
+  }, [trendRange]);
+
+  useEffect(() => {
+    api.get('/jobs/trends')
+      .then(res => setTrends(res.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -133,8 +166,101 @@ export default function RecruiterDashboard() {
     currentPage * applicantsPerPage
   );
 
+  // Helper to refresh stats
+  const refreshStats = () => {
+    api.get('/jobs/stats')
+      .then(res => setStats(res.data))
+      .catch(() => {});
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 mt-8 bg-gray-50 min-h-screen">
+      {/* Recruiter Stats Summary */}
+      <div className="flex flex-wrap gap-6 justify-center mb-8">
+        <div className="bg-white rounded-xl shadow p-5 flex-1 min-w-[180px] text-center">
+          <div className="text-2xl font-bold text-blue-700">{stats.totalJobs}</div>
+          <div className="text-gray-600">Jobs Posted</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5 flex-1 min-w-[180px] text-center">
+          <div className="text-2xl font-bold text-indigo-700">{stats.totalApplicants}</div>
+          <div className="text-gray-600">Applicants</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5 flex-1 min-w-[180px] text-center">
+          <div className="text-2xl font-bold text-green-700">{stats.totalShortlisted}</div>
+          <div className="text-gray-600">Shortlisted</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5 flex-1 min-w-[180px] text-center">
+          <div className="text-2xl font-bold text-red-600">{stats.totalRejected}</div>
+          <div className="text-gray-600">Rejected</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5 flex-1 min-w-[180px] text-center">
+          <div className="text-2xl font-bold text-yellow-600">{stats.totalApplied}</div>
+          <div className="text-gray-600">Applied (Pending)</div>
+        </div>
+      </div>
+
+      {/* Recruiter Stats Chart */}
+      <div className="flex flex-col md:flex-row gap-8 justify-center items-center mb-10">
+        <div className="w-full md:w-1/2 bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-bold mb-4 text-center text-blue-700">Applicants by Status</h3>
+          <Bar
+            data={{
+              labels: ['Shortlisted', 'Rejected', 'Applied (Pending)'],
+              datasets: [
+                {
+                  label: 'Applicants',
+                  data: [stats.totalShortlisted, stats.totalRejected, stats.totalApplied],
+                  backgroundColor: [
+                    'rgba(34,197,94,0.7)', // green
+                    'rgba(239,68,68,0.7)', // red
+                    'rgba(234,179,8,0.7)', // yellow
+                  ],
+                  borderRadius: 8,
+                  borderWidth: 1,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { enabled: true },
+              },
+              scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+              },
+            }}
+            height={220}
+          />
+        </div>
+        <div className="w-full md:w-1/3 bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-bold mb-4 text-center text-blue-700">Jobs vs Applicants</h3>
+          <Doughnut
+            data={{
+              labels: ['Jobs Posted', 'Applicants'],
+              datasets: [
+                {
+                  data: [stats.totalJobs, stats.totalApplicants],
+                  backgroundColor: [
+                    'rgba(59,130,246,0.7)', // blue
+                    'rgba(99,102,241,0.7)', // indigo
+                  ],
+                  borderWidth: 1,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { position: 'bottom' },
+                tooltip: { enabled: true },
+              },
+            }}
+            height={220}
+          />
+        </div>
+      </div>
+
       <div className="bg-gradient-to-br from-pink-100 via-white to-indigo-100 rounded-2xl shadow-xl p-8 mb-10">
         <h2 className="text-3xl font-extrabold mb-6 text-blue-700 text-center tracking-tight">Post a New Job</h2>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -338,7 +464,7 @@ export default function RecruiterDashboard() {
                   key={index}
                   className={`relative rounded-xl shadow-lg p-6 bg-gradient-to-br from-pink-100 via-white to-indigo-100 border border-blue-100 transition hover:shadow-2xl flex flex-col gap-2 ${app.status === 'shortlisted' ? 'ring-2 ring-green-400' : app.status === 'rejected' ? 'ring-2 ring-red-300' : ''}`}
                   tabIndex={0}
-                  aria-label={`Applicant ${app.applicantId.name}`}
+                  aria-label={`Applicant ${app.applicantId?.name || 'Unknown'}`}
                 >
                   {/* Cross icon for removing applicant (always visible, top-right) */}
                   <button
@@ -349,6 +475,7 @@ export default function RecruiterDashboard() {
                         await api.delete(`/jobs/applicants/${app._id}`);
                         setApplicants(prev => prev.filter(a => a._id !== app._id));
                         setMessage({ type: 'success', text: 'Applicant removed and details stored.' });
+                        refreshStats(); // update stats after applicant removal
                       } catch (err) {
                         setMessage({ type: 'error', text: err.response?.data?.msg || 'Failed to remove applicant.' });
                       }
@@ -358,11 +485,11 @@ export default function RecruiterDashboard() {
                   </button>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-xl font-bold text-blue-700">
-                      {app.applicantId.name[0]?.toUpperCase()}
+                      {(app.applicantId?.name ? app.applicantId.name[0]?.toUpperCase() : '?')}
                     </div>
                     <div>
-                      <div className="font-bold text-lg text-blue-900">{app.applicantId.name}</div>
-                      <div className="text-gray-500 text-sm">{app.applicantId.email}</div>
+                      <div className="font-bold text-lg text-blue-900">{app.applicantId?.name || 'Unknown'}</div>
+                      <div className="text-gray-500 text-sm">{app.applicantId?.email || 'Unknown'}</div>
                       {/* Show job title */}
                       <div className="text-xs text-gray-700 mt-1">Applied for: <span className="font-semibold">{app.jobId?.title || 'Job'}</span></div>
                       {/* Show application deadline if present */}
@@ -392,6 +519,7 @@ export default function RecruiterDashboard() {
                           await api.patch(`/jobs/applicants/${app._id}/status`, { status: 'shortlisted' });
                           setApplicants(prev => prev.map(a => a._id === app._id ? { ...a, status: 'shortlisted' } : a));
                           setMessage({ type: 'success', text: 'Applicant shortlisted!' });
+                          refreshStats(); // update stats after status change
                         } catch (err) {
                           setMessage({ type: 'error', text: err.response?.data?.msg || 'Failed to update status.' });
                         }
@@ -407,6 +535,7 @@ export default function RecruiterDashboard() {
                           await api.patch(`/jobs/applicants/${app._id}/status`, { status: 'rejected' });
                           setApplicants(prev => prev.map(a => a._id === app._id ? { ...a, status: 'rejected' } : a));
                           setMessage({ type: 'success', text: 'Applicant rejected.' });
+                          refreshStats(); // update stats after status change
                         } catch (err) {
                           setMessage({ type: 'error', text: err.response?.data?.msg || 'Failed to update status.' });
                         }
@@ -527,6 +656,8 @@ export default function RecruiterDashboard() {
                           await api.delete(`/jobs/${job._id}`);
                           setJobs(jobs => jobs.filter(j => j._id !== job._id));
                           setMessage({ type: 'success', text: 'Job deleted successfully.' });
+                          await api.get('/jobs');
+                          refreshStats(); // update stats after delete
                         } catch (err) {
                           setMessage({ type: 'error', text: err.response?.data?.msg || 'Failed to delete job.' });
                         }
@@ -549,6 +680,68 @@ export default function RecruiterDashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Unique Analytics: Jobs & Applicants Trend Over Time */}
+      <div className="bg-gradient-to-br from-blue-50 via-white to-indigo-50 rounded-2xl shadow-xl p-8 mb-10">
+        <h2 className="text-2xl font-bold mb-6 text-blue-700 text-center tracking-tight">Jobs & Applicants Trend</h2>
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center mb-6">
+          <label className="font-medium flex items-center gap-2">
+            From:
+            <input type="date" className="input border px-2 py-1" value={trendRange.from} max={trendRange.to} onChange={e => setTrendRange(r => ({ ...r, from: e.target.value }))} />
+          </label>
+          <label className="font-medium flex items-center gap-2">
+            To:
+            <input type="date" className="input border px-2 py-1" value={trendRange.to} min={trendRange.from} max={new Date().toISOString().slice(0,10)} onChange={e => setTrendRange(r => ({ ...r, to: e.target.value }))} />
+          </label>
+        </div>
+        <Bar
+          data={{
+            labels: Array.from(new Set([
+              ...trends.jobs.map(j => j._id),
+              ...trends.applicants.map(a => a._id)
+            ])).sort(),
+            datasets: [
+              {
+                label: 'Jobs Posted',
+                data: Array.from(new Set([
+                  ...trends.jobs.map(j => j._id),
+                  ...trends.applicants.map(a => a._id)
+                ])).sort().map(month => {
+                  const found = trends.jobs.find(j => j._id === month);
+                  return found ? found.count : 0;
+                }),
+                backgroundColor: 'rgba(59,130,246,0.7)',
+                borderRadius: 8,
+                borderWidth: 1,
+              },
+              {
+                label: 'Applicants',
+                data: Array.from(new Set([
+                  ...trends.jobs.map(j => j._id),
+                  ...trends.applicants.map(a => a._id)
+                ])).sort().map(month => {
+                  const found = trends.applicants.find(a => a._id === month);
+                  return found ? found.count : 0;
+                }),
+                backgroundColor: 'rgba(34,197,94,0.7)',
+                borderRadius: 8,
+                borderWidth: 1,
+              },
+            ],
+          }}
+          options={{
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' },
+              tooltip: { enabled: true },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            },
+          }}
+          height={260}
+        />
       </div>
 
       {/* Job Details Modal for Applicants */}
@@ -585,26 +778,59 @@ export default function RecruiterDashboard() {
             <div className="mb-1"><span className="font-semibold">Email:</span> {modalJob.applicantId?.email}</div>
             <div className="mb-1"><span className="font-semibold">Status:</span> {modalJob.status}</div>
             <div className="mb-1"><span className="font-semibold">Match Score:</span> {modalJob.matchScore}%</div>
-            {Array.isArray(modalJob.missingSkills) && modalJob.missingSkills.length > 0 && (
-              <div className="mb-1">
-                <span className="font-semibold">Missing Skills:</span>
-                <span className="ml-1 text-yellow-800 bg-yellow-100 px-2 py-1 rounded text-xs font-semibold" title={modalJob.missingSkills.join(', ')}>
-                  {modalJob.missingSkills.join(', ')}
-                </span>
-              </div>
-            )}
+            {/* Skill Coverage Bar */}
+            <div className="w-full h-3 bg-gray-200 rounded mb-2 overflow-hidden" title="Skill Coverage">
+              <div
+                className="h-full bg-green-400 transition-all duration-500"
+                style={{ width: `${modalJob.matchScore || 0}%` }}
+              ></div>
+              <div
+                className="h-full bg-yellow-200 transition-all duration-500"
+                style={{ width: `${100 - (modalJob.matchScore || 0)}%`, marginLeft: `${modalJob.matchScore || 0}%`, position: 'relative', top: '-12px' }}
+              ></div>
+            </div>
+            {/* Matched Skills as Chips */}
             {Array.isArray(modalJob.matchedSkills) && modalJob.matchedSkills.length > 0 && (
-              <div className="mb-1">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
                 <span className="font-semibold">Matched Skills:</span>
-                <span className="ml-1 text-green-800 bg-green-100 px-2 py-1 rounded text-xs font-semibold" title={modalJob.matchedSkills.join(', ')}>
-                  {modalJob.matchedSkills.join(', ')}
+                {modalJob.matchedSkills.map(skill => (
+                  <span key={skill} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold shadow-sm hover:bg-green-200 transition cursor-pointer" tabIndex={0} title={skill}>{skill}</span>
+                ))}
+              </div>
+            )}
+            {/* Missing Skills as Chips or All Matched Badge */}
+            {Array.isArray(modalJob.missingSkills) && modalJob.missingSkills.length > 0 ? (
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <span className="font-semibold">Missing Skills:</span>
+                {modalJob.missingSkills.map(skill => (
+                  <span key={skill} className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold shadow-sm hover:bg-yellow-200 transition cursor-pointer" tabIndex={0} title={skill}>{skill}</span>
+                ))}
+              </div>
+            ) : (
+              <div className="mb-1">
+                <span className="inline-flex items-center bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
+                  <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  All skills matched!
                 </span>
               </div>
             )}
-            {modalJob.resumePath && (
-              <div className="mb-1"><a className="text-blue-600 underline" href={`http://localhost:5000/${encodeURI(modalJob.resumePath.replace(/^.*uploads[\\/]/, 'uploads/'))}`} target="_blank" rel="noopener noreferrer">View Resume</a></div>
+            {/* Application Date */}
+            {modalJob.createdAt && (
+              <div className="mb-1 text-xs text-gray-500">Applied on: {new Date(modalJob.createdAt).toLocaleString()}</div>
             )}
-            <button className="btn w-full mt-4" onClick={() => setShowJobModal(false)} autoFocus>Close</button>
+            {/* Resume Actions */}
+            {modalJob.resumePath && (
+              <div className="mb-2 flex gap-2 items-center">
+                <a className="text-blue-600 underline flex items-center gap-1" href={`http://localhost:5000/${encodeURI(modalJob.resumePath.replace(/^.*uploads[\\/]/, 'uploads/'))}`} target="_blank" rel="noopener noreferrer">
+                  <svg className="w-4 h-4 inline-block" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m6 0V6a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2v-6z" /></svg>
+                  View Resume
+                </a>
+              </div>
+            )}
+            <button className="btn w-full mt-4 flex items-center justify-center gap-2" onClick={() => setShowJobModal(false)} autoFocus>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              Close
+            </button>
           </div>
         </div>
       )}

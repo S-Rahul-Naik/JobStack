@@ -6,6 +6,8 @@ export default function UploadResume() {
   const [selectedJob, setSelectedJob] = useState('');
   const [resume, setResume] = useState(null);
   const [matchScore, setMatchScore] = useState(null);
+  const [matchedSkills, setMatchedSkills] = useState([]);
+  const [missingSkills, setMissingSkills] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' }); // ✅ Toast
 
   useEffect(() => {
@@ -27,12 +29,17 @@ export default function UploadResume() {
     try {
       const res = await api.post('/resumes/upload', formData);
       setMatchScore(res.data.matchScore);
+      setMatchedSkills(res.data.matchedSkills || []);
+      setMissingSkills(res.data.missingSkills || []);
       setMessage({ type: 'success', text: 'Resume uploaded successfully!' });
     } catch (err) {
       setMessage({
         type: 'error',
         text: err.response?.data?.msg || 'Upload failed',
       });
+      setMatchScore(null);
+      setMatchedSkills([]);
+      setMissingSkills([]);
     }
   };
 
@@ -76,16 +83,16 @@ export default function UploadResume() {
         {matchScore !== null && (
           <div className="mt-4">
             <p className="font-bold text-green-600">Match Score: {matchScore}%</p>
-            {Array.isArray(res.data?.matchedSkills) && res.data.matchedSkills.length > 0 && (
+            {matchedSkills.length > 0 && (
               <div className="mt-2">
                 <span className="font-semibold">Matched Skills:</span>
-                <span className="ml-1 text-green-800 bg-green-100 px-2 py-1 rounded text-xs font-semibold">{res.data.matchedSkills.join(', ')}</span>
+                <span className="ml-1 text-green-800 bg-green-100 px-2 py-1 rounded text-xs font-semibold">{matchedSkills.join(', ')}</span>
               </div>
             )}
-            {Array.isArray(res.data?.missingSkills) && res.data.missingSkills.length > 0 && (
+            {missingSkills.length > 0 && (
               <div className="mt-2">
                 <span className="font-semibold">Missing Skills:</span>
-                <span className="ml-1 text-yellow-800 bg-yellow-100 px-2 py-1 rounded text-xs font-semibold">{res.data.missingSkills.join(', ')}</span>
+                <span className="ml-1 text-yellow-800 bg-yellow-100 px-2 py-1 rounded text-xs font-semibold">{missingSkills.join(', ')}</span>
               </div>
             )}
           </div>
