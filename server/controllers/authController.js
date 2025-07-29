@@ -29,8 +29,16 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
+    // Check if profile needs completion (missing experience for non-admin users)
+    const needsProfileUpdate = user.role !== 'admin' && !user.experience;
+
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
-    res.json({ token, user });
+    res.json({ 
+      token, 
+      user,
+      needsProfileUpdate,
+      message: needsProfileUpdate ? 'Please complete your profile by adding your experience level' : null
+    });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
@@ -47,16 +55,31 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, experience, skills } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
     if (name) user.name = name;
     if (email) user.email = email;
     if (password) user.password = password; // will be hashed by pre-save hook
+    if (experience) {
+      user.experience = experience;
+      user.profileComplete = true; // Mark profile as complete when experience is added
+    }
+    if (skills) user.skills = skills;
 
     await user.save();
-    res.json({ msg: 'Profile updated', user: { name: user.name, email: user.email, role: user.role } });
+    res.json({ 
+      msg: 'Profile updated successfully', 
+      user: { 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        experience: user.experience,
+        skills: user.skills,
+        profileComplete: user.profileComplete
+      } 
+    });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }

@@ -155,11 +155,75 @@ exports.updateApplicantStatus = async (req, res) => {
     return res.status(400).json({ msg: 'Invalid status' });
   }
   try {
-    const application = await Application.findById(applicationId);
+    const application = await Application.findById(applicationId)
+      .populate('applicantId', 'name email')
+      .populate('jobId', 'title companyName');
+      
     if (!application) return res.status(404).json({ msg: 'Application not found' });
+    
+    const oldStatus = application.status;
     application.status = status;
     await application.save();
-    res.json({ msg: 'Status updated', application });
+
+    // 🚀 AUTO-START CONVERSATION when shortlisted
+    if (status === 'shortlisted' && oldStatus !== 'shortlisted') {
+      try {
+        const Conversation = require('../models/Conversation');
+        const Message = require('../models/Message');
+
+        // Check if conversation already exists
+        const existingConversation = await Conversation.findOne({
+          applicantId: application.applicantId._id,
+          recruiterId: req.user.id,
+          jobId: application.jobId._id,
+          applicationId: applicationId
+        });
+
+        if (!existingConversation) {
+          // Create new conversation
+          const conversation = new Conversation({
+            applicantId: application.applicantId._id,
+            recruiterId: req.user.id,
+            jobId: application.jobId._id,
+            applicationId: applicationId
+          });
+
+          await conversation.save();
+
+          // Send system message to start conversation
+          const systemMessage = new Message({
+            conversationId: conversation._id,
+            senderId: req.user.id,
+            senderType: 'system',
+            messageType: 'system',
+            content: {
+              text: `🎉 Congratulations! ${application.applicantId.name} has been shortlisted for ${application.jobId.title} at ${application.jobId.companyName}. You can now communicate directly to discuss next steps.`
+            },
+            aiAnalysis: {
+              fraudScore: 0,
+              sentimentScore: 1,
+              riskFlags: [],
+              inappropriate: false,
+              suspiciousKeywords: [],
+              analysisTimestamp: new Date()
+            }
+          });
+
+          await systemMessage.save();
+          
+          console.log(`✅ Auto-started conversation for shortlisted applicant: ${application.applicantId.name}`);
+        }
+      } catch (convErr) {
+        console.error('Error auto-starting conversation:', convErr);
+        // Don't fail the status update if conversation creation fails
+      }
+    }
+
+    res.json({ 
+      msg: `Status updated to ${status}`, 
+      application,
+      conversationStarted: status === 'shortlisted' 
+    });
   } catch (err) {
     res.status(500).json({ msg: 'Error updating status: ' + err.message });
   }

@@ -1,0 +1,272 @@
+/* client/src/pages/Chat.css */
+.chat-page {
+  height: calc(100vh - 80px); /* Subtract navbar height */
+  overflow: hidden;
+  background: #f8fafc;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.chat-container {
+  display: flex;
+  height: 100%;
+}
+
+/* Desktop Layout */
+.conversations-panel {
+  width: 350px;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+}
+
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.no-conversation-selected {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #f8fafc;
+  padding: 2rem;
+  overflow-y: auto;
+  min-height: 0;
+  /* Hide scrollbar while keeping functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.no-conversation-selected::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  background: white;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  margin: 2rem 0;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  /* Hide scrollbar while keeping functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.welcome-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.welcome-icon {
+  font-size: 64px;
+  margin-bottom: 1.5rem;
+}
+
+.welcome-content h2 {
+  color: #1f2937;
+  margin-bottom: 1rem;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.welcome-content > p {
+  color: #6b7280;
+  margin-bottom: 2rem;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.features-info,
+.safety-reminders {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.features-info h3,
+.safety-reminders h3 {
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.features-info ul,
+.safety-reminders ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #374151;
+}
+
+.features-info li,
+.safety-reminders li {
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.features-info {
+  border: 1px solid #10b981;
+  background: #f0fdf4;
+}
+
+.features-info h3 {
+  color: #065f46;
+}
+
+.features-info ul {
+  color: #065f46;
+}
+
+.safety-reminders {
+  border: 1px solid #3b82f6;
+  background: #eff6ff;
+}
+
+.safety-reminders h3 {
+  color: #1e40af;
+}
+
+.safety-reminders ul {
+  color: #1e40af;
+}
+
+/* Mobile Layout */
+.mobile-conversations,
+.mobile-chat {
+  width: 100%;
+  height: 100vh;
+}
+
+/* Mobile-specific overrides */
+@media (max-width: 768px) {
+  .chat-container {
+    flex-direction: column;
+  }
+  
+  .conversations-panel,
+  .chat-panel {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .no-conversation-selected {
+    padding: 1rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+    /* Hide scrollbar on mobile */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-conversation-selected::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .welcome-content {
+    padding: 2rem 1.5rem;
+    margin: 0;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    /* Hide scrollbar on mobile */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .welcome-content::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .welcome-icon {
+    font-size: 48px;
+    margin-bottom: 1rem;
+  }
+  
+  .welcome-content h2 {
+    font-size: 24px;
+    margin-bottom: 0.75rem;
+  }
+  
+  .welcome-content > p {
+    font-size: 14px;
+    margin-bottom: 1.5rem;
+  }
+  
+  .features-info,
+  .safety-reminders {
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .features-info h3,
+  .safety-reminders h3 {
+    font-size: 16px;
+  }
+  
+  .features-info li,
+  .safety-reminders li {
+    margin-bottom: 0.5rem;
+    font-size: 14px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .conversations-panel {
+    width: 300px;
+  }
+  
+  .welcome-content {
+    padding: 2.5rem 1.5rem;
+  }
+  
+  .welcome-content h2 {
+    font-size: 24px;
+  }
+  
+  .features-info,
+  .safety-reminders {
+    padding: 1.25rem;
+  }
+}
+
+/* High DPI/Retina display adjustments */
+@media (-webkit-min-device-pixel-ratio: 2) {
+  .welcome-content {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .chat-page {
+    background: #111827;
+  }
+  
+  .welcome-content {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+  
+  .welcome-content h2 {
+    color: #f9fafb;
+  }
+  
+  .welcome-content > p {
+    color: #d1d5db;
+  }
+}

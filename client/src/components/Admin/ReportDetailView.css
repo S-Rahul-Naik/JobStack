@@ -1,0 +1,170 @@
+/* client/src/components/Admin/ReportDetailView.css */
+.report-detail-view {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.report-detail-view h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.report-detail-view .grid {
+  display: grid;
+}
+
+.report-detail-view .space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.report-detail-view .space-y-3 > * + * {
+  margin-top: 0.75rem;
+}
+
+/* Message Timeline Styling */
+.report-detail-view .message-timeline {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.report-detail-view .message-item {
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.report-detail-view .message-applicant {
+  background-color: #eff6ff;
+  border-left: 4px solid #3b82f6;
+}
+
+.report-detail-view .message-recruiter {
+  background-color: #f0fdf4;
+  border-left: 4px solid #10b981;
+}
+
+.report-detail-view .message-system {
+  background-color: #f9fafb;
+  border-left: 4px solid #6b7280;
+}
+
+/* Action Buttons */
+.report-detail-view .action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.report-detail-view .action-btn {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.report-detail-view .action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Resolution Form */
+.report-detail-view .resolution-form {
+  background: #f8fafc;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.report-detail-view .form-group {
+  margin-bottom: 1rem;
+}
+
+.report-detail-view .form-label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.report-detail-view .form-input,
+.report-detail-view .form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.report-detail-view .form-input:focus,
+.report-detail-view .form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Status Badges */
+.report-detail-view .status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.report-detail-view .status-reported {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.report-detail-view .status-under-review {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.report-detail-view .status-resolved {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .report-detail-view .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .report-detail-view .action-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .report-detail-view .action-btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Animation */
+.report-detail-view {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

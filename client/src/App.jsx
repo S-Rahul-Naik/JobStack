@@ -1,68 +1,4 @@
-// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-// import Login from './pages/Login';
-// import Register from './pages/Register';
-// import ApplicantDashboard from './pages/ApplicantDashboard';
-// import RecruiterDashboard from './pages/RecruiterDashboard';
-// import UploadResume from './pages/UploadResume';
-// import Navbar from './components/Navbar';
-// import ApplicantApplications from './pages/ApplicantApplications';
-// import AdminDashboard from './pages/AdminDashboard';
-// import ProtectedRoute from './components/ProtectedRoute';
-
-// function App() {
-//   return (
-//     <Router>
-//       <Navbar />
-//       <Routes>
-//         <Route path="/" element={<Login />} />
-//         <Route path="/register" element={<Register />} />
-//         <Route path="/dashboard" element={<ApplicantDashboard />} />
-//         <Route path="/recruiter" element={<RecruiterDashboard />} />
-//         <Route path="/upload-resume" element={<UploadResume />} />
-//         <Route path="/my-applications" element={<ApplicantApplications />} />
-//         <Route path="/admin" element={<AdminDashboard />} />
-//         <Route
-//           path="/admin"
-//           element={
-//             <ProtectedRoute role="admin">
-//               <AdminDashboard />
-//             </ProtectedRoute>
-//           }
-//         />
-//         <Route
-//           path="/dashboard"
-//           element={
-//             <ProtectedRoute role="applicant">
-//               <ApplicantDashboard />
-//             </ProtectedRoute>
-//           }
-//         />
-//         <Route
-//           path="/recruiter"
-//           element={
-//             <ProtectedRoute role="recruiter">
-//               <RecruiterDashboard />
-//             </ProtectedRoute>
-//           }
-//         />
-//         <Route
-//           path="/upload-resume"
-//           element={
-//             <ProtectedRoute role="applicant">
-//               <UploadResume />
-//             </ProtectedRoute>
-//           }
-//         />
-
-//       </Routes>
-//     </Router>
-//   );
-// }
-
-// export default App;
-
-
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ApplicantDashboard from './pages/ApplicantDashboard';
@@ -74,10 +10,15 @@ import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './pages/Profile';
 import ResetPassword from './pages/ResetPassword';
+import Chat from './pages/Chat';
+import GlobalFooterBar from './components/GlobalFooterBar';
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const isChat = location.pathname === '/chat';
+
   return (
-    <Router>
+    <>
       <Navbar />
       <Routes>
         {/* Public Routes */}
@@ -113,8 +54,16 @@ function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute role="applicant">
+            <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
             </ProtectedRoute>
           }
         />
@@ -135,6 +84,15 @@ function App() {
           }
         />
       </Routes>
+      {!isChat && <GlobalFooterBar />}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
