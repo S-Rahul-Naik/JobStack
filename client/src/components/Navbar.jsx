@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
-import ChatNotifications from './Chat/ChatNotifications';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -23,6 +23,7 @@ export default function Navbar() {
           <Link to="/my-applications" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>My Applications</Link>
           <Link to="/chat" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Messages</Link>
           <Link to="/profile" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Edit Profile</Link>
+          <Link to="/notifications" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Notifications</Link>
         </>
       )}
       {user && user.role === 'recruiter' && (
@@ -30,12 +31,14 @@ export default function Navbar() {
           <Link to="/recruiter" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Recruiter Panel</Link>
           <Link to="/chat" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Messages</Link>
           <Link to="/profile" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Edit Profile</Link>
+          <Link to="/notifications" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Notifications</Link>
         </>
       )}
       {user && user.role === 'admin' && (
         <>
           <Link to="/admin" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Admin</Link>
           <Link to="/profile" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Edit Profile</Link>
+          <Link to="/notifications" className="block md:inline text-white font-semibold hover:underline focus:outline-none py-2 md:py-0" onClick={() => setSideOpen(false)}>Notifications</Link>
         </>
       )}
       {!user && (
@@ -55,16 +58,12 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-6 md:gap-8">
           {navLinks}
         </nav>
-        {/* Chat notifications and Desktop logout */}
+        {/* Notification Bell and Desktop logout */}
         <div className="hidden md:flex items-center gap-4">
           {user && (user.role === 'applicant' || user.role === 'recruiter') && (
-            <ChatNotifications onNavigateToChat={(conversationId) => {
-              if (conversationId) {
-                navigate(`/chat?conversation=${conversationId}`);
-              } else {
-                navigate('/chat');
-              }
-            }} />
+            <>
+              <NotificationBell />
+            </>
           )}
           {user && (
             <button
