@@ -100,6 +100,52 @@ exports.createJob = async (req, res) => {
       country
     });
     await job.save();
+
+    // 🔔 Create notification for relevant candidates
+    const { createNotification } = require('./notificationController');
+    
+    // Find candidates with matching skills (at least 30% skill match)
+    const jobSkills = requiredSkills || [];
+    if (jobSkills.length > 0) {
+      const candidates = await User.find({ 
+        role: 'applicant',
+        skills: { $in: jobSkills }
+      }).select('_id name skills');
+
+      // Notify candidates with good skill match
+      const relevantCandidates = candidates.filter(candidate => {
+        const candidateSkills = candidate.skills || [];
+        const matchCount = jobSkills.filter(skill => 
+          candidateSkills.some(cSkill => 
+            cSkill.toLowerCase().includes(skill.toLowerCase()) ||
+            skill.toLowerCase().includes(cSkill.toLowerCase())
+          )
+        ).length;
+        const matchPercentage = (matchCount / jobSkills.length) * 100;
+        return matchPercentage >= 30; // 30% skill match threshold
+      });
+
+      // Send notifications to relevant candidates
+      const notificationPromises = relevantCandidates.map(candidate =>
+        createNotification(candidate._id, {
+          title: '🎯 New Matching Job Posted',
+          message: `A new ${title} position at ${companyName} matches your skills. Apply now!`,
+          type: 'job_match',
+          actionUrl: `/jobs/${job._id}`,
+          metadata: {
+            jobId: job._id,
+            companyName,
+            location: location || 'Remote',
+            salary: salary || 'Competitive'
+          }
+        })
+      );
+
+      await Promise.all(notificationPromises);
+      
+      console.log(`📧 Notified ${relevantCandidates.length} relevant candidates about new job: ${title}`);
+    }
+
     res.status(201).json(job);
   } catch (err) {
     res.status(500).json({ msg: 'Error creating job: ' + err.message });
@@ -120,7 +166,7 @@ exports.getAllJobs = async (req, res) => {
 exports.applyToJob = async (req, res) => {
   const jobId = req.params.id;
   try {
-    const job = await Job.findById(jobId);
+    const job = await Job.findById(jobId).populate('recruiterId', 'name email');
     if (!job) return res.status(404).json({ msg: 'Job not found' });
     if (job.applicationDeadline && new Date() > new Date(job.applicationDeadline)) {
       return res.status(400).json({ msg: 'Applications for this job are closed.' });
@@ -141,6 +187,39 @@ exports.applyToJob = async (req, res) => {
     });
 
     await application.save();
+
+    // 🔔 Create notifications
+    const { createNotification } = require('./notificationController');
+    const User = require('../models/User');
+    const applicant = await User.findById(req.user.id);
+
+    // Notify applicant of successful application
+    await createNotification(req.user.id, {
+      title: '✅ Application Submitted',
+      message: `Your application for ${job.title} at ${job.companyName} has been submitted successfully.`,
+      type: 'application',
+      actionUrl: '/my-applications',
+      metadata: {
+        jobId: job._id,
+        companyName: job.companyName
+      }
+    });
+
+    // Notify recruiter of new application
+    if (job.recruiterId) {
+      await createNotification(job.recruiterId._id, {
+        title: '📋 New Application Received',
+        message: `${applicant.name} has applied for ${job.title}. Review their application in your dashboard.`,
+        type: 'application',
+        actionUrl: '/recruiter',
+        metadata: {
+          applicantId: req.user.id,
+          jobId: job._id,
+          applicantName: applicant.name
+        }
+      });
+    }
+
     res.status(201).json({ msg: 'Applied successfully', application });
   } catch (err) {
     res.status(500).json({ msg: 'Error applying to job: ' + err.message });
@@ -165,7 +244,36 @@ exports.updateApplicantStatus = async (req, res) => {
     application.status = status;
     await application.save();
 
-    // 🚀 AUTO-START CONVERSATION when shortlisted
+    // � Create notification for applicant
+    const { createNotification } = require('./notificationController');
+    
+    if (status === 'shortlisted') {
+      await createNotification(application.applicantId._id, {
+        title: '🎉 Application Shortlisted!',
+        message: `Your application for ${application.jobId.title} at ${application.jobId.companyName} has been shortlisted. Check your messages for next steps.`,
+        type: 'application',
+        actionUrl: '/my-applications',
+        metadata: {
+          applicationId: applicationId,
+          jobId: application.jobId._id,
+          companyName: application.jobId.companyName
+        }
+      });
+    } else if (status === 'rejected') {
+      await createNotification(application.applicantId._id, {
+        title: 'Application Update',
+        message: `Thank you for your interest in ${application.jobId.title} at ${application.jobId.companyName}. We've decided to move forward with other candidates.`,
+        type: 'application',
+        actionUrl: '/my-applications',
+        metadata: {
+          applicationId: applicationId,
+          jobId: application.jobId._id,
+          companyName: application.jobId.companyName
+        }
+      });
+    }
+
+    // �🚀 AUTO-START CONVERSATION when shortlisted
     if (status === 'shortlisted' && oldStatus !== 'shortlisted') {
       try {
         const Conversation = require('../models/Conversation');

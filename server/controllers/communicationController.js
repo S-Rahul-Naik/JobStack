@@ -208,13 +208,15 @@ exports.sendMessage = async (req, res) => {
     const { conversationId, content } = req.body;
 
     // Verify conversation exists and user is participant
-    const conversation = await Conversation.findById(conversationId);
+    const conversation = await Conversation.findById(conversationId)
+      .populate('applicantId', 'name')
+      .populate('recruiterId', 'name');
     if (!conversation) {
       return res.status(404).json({ msg: 'Conversation not found' });
     }
 
-    const isParticipant = conversation.applicantId.toString() === req.user.id || 
-                         conversation.recruiterId.toString() === req.user.id;
+    const isParticipant = conversation.applicantId._id.toString() === req.user.id || 
+                         conversation.recruiterId._id.toString() === req.user.id;
     
     if (!isParticipant) {
       return res.status(403).json({ msg: 'Access denied' });
@@ -237,6 +239,41 @@ exports.sendMessage = async (req, res) => {
 
     // Update conversation activity
     await conversation.updateActivity();
+
+    // 🔔 Create notification for message recipient
+    const { createNotification } = require('./notificationController');
+    const User = require('../models/User');
+    
+    const sender = await User.findById(req.user.id).select('name');
+    let recipientId, recipientName, senderName;
+    
+    if (req.user.role === 'applicant') {
+      recipientId = conversation.recruiterId._id;
+      recipientName = conversation.recruiterId.name;
+      senderName = conversation.applicantId.name;
+    } else {
+      recipientId = conversation.applicantId._id;
+      recipientName = conversation.applicantId.name;
+      senderName = conversation.recruiterId.name;
+    }
+
+    // Don't send notification if recipient is actively chatting (last activity < 2 minutes)
+    const recentActivity = new Date(Date.now() - 2 * 60 * 1000); // 2 minutes ago
+    const shouldNotify = !conversation.lastActivity || conversation.lastActivity < recentActivity;
+
+    if (shouldNotify) {
+      await createNotification(recipientId, {
+        title: '💬 New Message',
+        message: `${senderName}: ${content.length > 50 ? content.substring(0, 50) + '...' : content}`,
+        type: 'message',
+        actionUrl: `/chat/${conversationId}`,
+        metadata: {
+          conversationId,
+          senderId: req.user.id,
+          senderName
+        }
+      });
+    }
 
     // Check if AI should trigger alert
     if (aiService.shouldTriggerAlert(aiAnalysis)) {

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Bar, Pie, Doughnut } from 'react-chartjs-2';
 import { Chart, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+import { useDebounce } from '../hooks/useDebounce';
 Chart.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 export default function RecruiterDashboard() {
@@ -21,17 +22,21 @@ export default function RecruiterDashboard() {
 
   const [applicants, setApplicants] = useState([]);
   const [jobs, setJobs] = useState([]);
-  const [message, setMessage] = useState({ type: '', text: '' }); // ✅ Toast state
+  const [message, setMessage] = useState({ type: '', text: '' });
   const [showJobModal, setShowJobModal] = useState(false);
   const [modalJob, setModalJob] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [stats, setStats] = useState({ totalJobs: 0, totalApplicants: 0, totalShortlisted: 0, totalRejected: 0, totalApplied: 0 });
-  const [trends, setTrends] = useState({ jobs: [], applicants: [] }); // --- Recruiter Trends (Jobs & Applicants per Month) ---
-  const [trendRange, setTrendRange] = useState({ from: '', to: '' }); // --- Date Range for Trends ---
+  const [trends, setTrends] = useState({ jobs: [], applicants: [] });
+  const [trendRange, setTrendRange] = useState({ from: '', to: '' });
   const applicantsPerPage = 6;
+
+  // Debounced search to improve performance
+  const debouncedSearch = useDebounce(search, 300);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -83,19 +88,45 @@ export default function RecruiterDashboard() {
   };
 
   useEffect(() => {
-    api.get('/jobs/applicants/all')
-      .then(res => setApplicants(res.data))
-      .catch(err => console.error('Error fetching applicants', err));
-    // Fetch recruiter stats
-    api.get('/jobs/stats')
-      .then(res => setStats(res.data))
-      .catch(() => {});
+    const loadDashboardData = async () => {
+      setDashboardLoading(true);
+      try {
+        const [applicantsRes, statsRes, jobsRes] = await Promise.all([
+          api.get('/jobs/applicants/all'),
+          api.get('/jobs/stats'),
+          api.get('/jobs/my')
+        ]);
+        
+        setApplicants(applicantsRes.data);
+        setStats(statsRes.data);
+        setJobs(jobsRes.data);
+      } catch (err) {
+        console.error('Error loading dashboard data', err);
+        setMessage({ type: 'error', text: 'Failed to load dashboard data' });
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    loadDashboardData();
   }, []);
 
   useEffect(() => {
-    api.get('/jobs/my')
-      .then(res => setJobs(res.data))
-      .catch(err => console.error('Error fetching jobs', err));
+    // Refresh data periodically
+    const interval = setInterval(async () => {
+      try {
+        const [applicantsRes, statsRes] = await Promise.all([
+          api.get('/jobs/applicants/all'),
+          api.get('/jobs/stats')
+        ]);
+        setApplicants(applicantsRes.data);
+        setStats(statsRes.data);
+      } catch (err) {
+        console.error('Error refreshing data', err);
+      }
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(interval);
   }, []);
 
   // --- Helper to get default last 6 months ---
@@ -155,9 +186,9 @@ export default function RecruiterDashboard() {
     const email = app.applicantId?.email?.toLowerCase() || "";
     const job = app.jobId?.title?.toLowerCase() || "";
     return (
-      name.includes(search.toLowerCase()) ||
-      email.includes(search.toLowerCase()) ||
-      job.includes(search.toLowerCase())
+      name.includes(debouncedSearch.toLowerCase()) ||
+      email.includes(debouncedSearch.toLowerCase()) ||
+      job.includes(debouncedSearch.toLowerCase())
     );
   });
   const totalPages = Math.ceil(filteredApplicants.length / applicantsPerPage) || 1;
@@ -172,6 +203,18 @@ export default function RecruiterDashboard() {
       .then(res => setStats(res.data))
       .catch(() => {});
   };
+
+  // Show loading state for initial dashboard load
+  if (dashboardLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 mt-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading recruiter dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 mt-8 bg-gray-50 min-h-screen">

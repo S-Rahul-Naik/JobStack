@@ -12,25 +12,50 @@ export default function ApplicantDashboard() {
   const [filters, setFilters] = useState({ country: '', jobType: '', postingDate: '' });
   const [showJobModal, setShowJobModal] = useState(false);
   const [modalJob, setModalJob] = useState(null);
-  const [user, setUser] = useState({ name: 'Applicant', email: '' }); // Placeholder, replace with real user fetch
+  const [user, setUser] = useState({ name: 'Applicant', email: '' });
+  const [loading, setLoading] = useState(true);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/jobs')
-      .then(res => setJobs(res.data))
-      .catch(err => console.error('Failed to fetch jobs', err));
-    // Fetch user info (replace with real API call if available)
-    api.get('/auth/me').then(res => setUser(res.data)).catch(() => {});
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        const [jobsRes, userRes] = await Promise.all([
+          api.get('/jobs'),
+          api.get('/auth/me').catch(() => ({ data: { name: 'Applicant', email: '' } }))
+        ]);
+        setJobs(jobsRes.data);
+        setUser(userRes.data);
+      } catch (err) {
+        console.error('Failed to fetch initial data', err);
+        setMessage({ type: 'error', text: 'Failed to load dashboard data' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      api.get('/jobs')
-        .then(res => setJobs(res.data))
-        .catch(() => {});
-    }, 10000);
+    const interval = setInterval(async () => {
+      if (!jobsLoading) {
+        setJobsLoading(true);
+        try {
+          const res = await api.get('/jobs');
+          setJobs(res.data);
+        } catch (err) {
+          console.error('Failed to refresh jobs', err);
+        } finally {
+          setJobsLoading(false);
+        }
+      }
+    }, 30000); // Refresh every 30 seconds instead of 10
+
     return () => clearInterval(interval);
-  }, []);
+  }, [jobsLoading]);
 
   const handleApply = async (jobId) => {
     try {
@@ -51,15 +76,20 @@ export default function ApplicantDashboard() {
       setMessage({ type: 'error', text: 'Select a job and a resume file' });
       return;
     }
+    
+    setUploadLoading(true);
     const formData = new FormData();
     formData.append('resume', resume);
     formData.append('jobId', selectedJob);
+    
     try {
       const res = await api.post('/resumes/upload', formData);
       setMatchScore(res.data.matchScore);
       setMessage({ type: 'success', text: 'Resume uploaded and matched successfully!' });
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.msg || 'Upload failed.' });
+    } finally {
+      setUploadLoading(false);
     }
   };
 
@@ -79,6 +109,17 @@ export default function ApplicantDashboard() {
   });
 
   // --- UI/UX Redesign ---
+  if (loading) {
+    return (
+      <div className="bg-[#f8fafc] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#f8fafc] min-h-screen">
       {/* Mobile: show only ApplicantHome */}
@@ -141,7 +182,23 @@ export default function ApplicantDashboard() {
           </div>
           {/* Recommended for you */}
           <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-2">Recommended for you <span className="text-sm text-gray-500 font-normal">as per your <button className="text-blue-600 hover:underline" onClick={() => navigate('/preferences')}>preferences</button></span></h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold">
+                Recommended for you 
+                <span className="text-sm text-gray-500 font-normal ml-2">
+                  as per your <button className="text-blue-600 hover:underline" onClick={() => navigate('/preferences')}>preferences</button>
+                </span>
+              </h2>
+              {jobsLoading && (
+                <div className="flex items-center text-sm text-gray-500">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Refreshing jobs...
+                </div>
+              )}
+            </div>
             {/* Filter Controls (collapsible on mobile) */}
             <div className="mb-4 flex flex-wrap gap-4 items-end">
               <div>
@@ -268,9 +325,29 @@ export default function ApplicantDashboard() {
                 <option key={job._id} value={job._id}>{job.title}</option>
               ))}
             </select>
-            <input type="file" accept="application/pdf" onChange={handleResumeChange} />
-            <button className="btn mt-2" onClick={handleUpload}>
-              Upload and Match
+            <input 
+              type="file" 
+              accept="application/pdf" 
+              onChange={handleResumeChange}
+              disabled={uploadLoading}
+              className="mb-2"
+            />
+            <button 
+              className="btn mt-2 flex items-center justify-center"
+              onClick={handleUpload}
+              disabled={uploadLoading || !resume || !selectedJob}
+            >
+              {uploadLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Analyzing Resume...
+                </>
+              ) : (
+                'Upload and Match'
+              )}
             </button>
             {matchScore !== null && (
               <div className="mt-4">
